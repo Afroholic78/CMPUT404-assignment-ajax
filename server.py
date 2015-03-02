@@ -21,6 +21,7 @@
 #     pip install flask
 
 
+
 import flask
 from flask import Flask, request
 import json
@@ -71,30 +72,36 @@ def flask_post_json():
     else:
         return json.loads(request.form.keys()[0])
 
+
 @app.route("/")
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return None
+    return app.send_static_file("index.html")
 
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
-    '''update the entities via this interface'''
-    return None
+    '''Update the entities via this interface by retrieving the data with flask_post_json'''
+    '''and setting the data to the entity and serialize to json'''
+    data = flask_post_json()
+    myWorld.set(entity, data)
+    return json.dumps(myWorld.get(entity))
 
 @app.route("/world", methods=['POST','GET'])    
 def world():
-    '''you should probably return the world here'''
-    return None
+    '''Return the world and serialize to json'''
+    return json.dumps(myWorld.world())
 
 @app.route("/entity/<entity>")    
 def get_entity(entity):
     '''This is the GET version of the entity interface, return a representation of the entity'''
-    return None
+    '''Use the world's get attribute to retrieve an entity from it and serialize to json'''
+    return json.dumps(myWorld.get(entity))
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
-    '''Clear the world out!'''
-    return None
+    '''Clear the world out! By calling world's clear and serialize to json'''
+    myWorld.clear()
+    return json.dumps(myWorld.world())
 
 if __name__ == "__main__":
     app.run()

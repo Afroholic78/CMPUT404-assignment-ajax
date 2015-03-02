@@ -20,7 +20,7 @@
         See the License for the specific language governing permissions and
         limitations under the License.
     "/>
-    <script src="json2.js"></script>
+    <script src="/static/json2.js"></script>
   </head> 
   <body bgcolor="black" height="100%" width="100%"> 
     <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
@@ -38,8 +38,12 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
         if (xhr.readyState==4) {
             try {
                 if (xhr.status==200) {
-                    //XXX: parse some JSON from the request!
-                    //XXX: Pass the data to the callback!
+                    //Check if call back is actually a function that needs to be applied
+                    //If so, parse the json from the response and apply the callback function to 
+                    if(callback){
+                        json = JSON.parse(xhr.responseText);
+                        callback(json);
+                    }
                 }
             } 
             catch(e) {
@@ -47,26 +51,45 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
             }
         }
     };
-    //XXX: POST to a URL
-    //XXX: set the mimetype and the accept headers!
-    // Remember to use application/json !
+    //Post the request to the url asynchronously with the right content type
+    //Convert object to Json string before sending it
+    xhr.open("POST",url,true);
+    xhr.setRequestHeader("Content-type","application/json");
+    obj = JSON.stringify(objects);
+    xhr.send(obj);
 }
 
 
 world = {};
 
-//XXX: TODO Make this prettier!
+
 function drawCircle(context,entity) {
     with(context) {
         beginPath();              
-        lineWidth = 3;
+        lineWidth = 5;
         var x = entity["x"];
         var y = entity["y"];
         //moveTo(x,y);
-        fillStyle = entity["colour"];
-        strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        //If the program tries to draw green or blue dots, set the fill as a random hex color
+        if(entity["colour"] == "green" || "blue"){
+            // code snippet from http://www.paulirish.com/2009/random-hex-color-code-snippets/
+            fillStyle = '#'+Math.floor(Math.random()*16777215).toString(16);
+            strokeStyle = fillStyle;
+            arc(x, y, (entity["radius"])?entity["radius"]:25, 0, 2.0 * Math.PI, false);  
+            stroke();
+            fill();
+        }
+        //If it tries to print red ones draw the image instead
+        if(entity["colour"] == "red"){
+            var image = new Image();
+            image.src = "/static/original.gif";
+            drawImage(image, x-80, y-90);
+        }
+
+        
+
+        
+
     }
 }
 
@@ -75,7 +98,7 @@ function prepEntity(entity) {
         entity["colour"] = "#FF0000";
     }
     if (!entity["radius"]) {
-        entity["radius"] = 50;
+        entity["radius"] = 25;
     }
     return entity;
 }
@@ -136,7 +159,8 @@ function getPosition(e) {
 
 function addEntity(entity, data) {
     world[entity] = data;
-    drawNextFrame(); // (but should we?)
+    drawNextFrame()  
+    sendJSONXMLHTTPRequest("/entity/" + entity, data, null)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
 
 }
@@ -261,8 +285,13 @@ mouse.mousedraggers.push(function(x,y,clicked,e) {
 
 
 function update() {
-    //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    //Send a request for the world and store the return into local world and draw the next frame
+    sendJSONXMLHTTPRequest("/world", {}, function(anon){
+        world = anon;
+        drawNextFrame();
+    });
     drawFrame();
+    
 }
 
 // 30 frames per second
